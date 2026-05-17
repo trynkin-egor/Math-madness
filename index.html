@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Math Madness — математический раннер</title>
+    <link rel="stylesheet" href="index.css">
+    <script src="scripts/index.js"></script>
+</head>
+<body>
+    <div id="startMenu" class="menu-overlay">
+    <div class="menu-card"><h1>📐MATH MADNESS📐</h1><div class="sub">Бесконечный раннер</div><button id="playButton" class="start-btn">▶ начать </button>
+    <div class="menu-settings"><div class="menu-setting-row"><span> Цвет фона:</span><select id="menuBgSelect"><option value="#1a2a3a">Тёмный чертёж</option><option value="#2c2e3a">Математический грифель</option><option value="#1f3b3a">Мятная формула</option><option value="#442e3a">Фиолетовый интеграл</option></select></div>
+    <div class="menu-setting-row"><span> Выбор героя:</span><select id="menuSkinSelect"><option value="x">x</option><option value="y">y</option><option value="∫">∫ интеграл</option><option value="√">√ корень</option><option value="±">± плюс-минус</option></select></div>
+    <div class="menu-setting-row"><span> Скорость:</span><div><button data-diff-menu="easy" class="difficulty-btn diff-menu-btn">Медленная</button><button data-diff-menu="medium" class="difficulty-btn diff-menu-btn active">Средняя</button><button data-diff-menu="hard" class="difficulty-btn diff-menu-btn">Быстрая</button></div></div></div>
+    <div class="message-small">Клик / Пробел — прыжок.При падении — реши уравнение!</div></div>
+</div>
+<div class="game-container">
+    <canvas id="gameCanvas" width="900" height="550"></canvas>
+    <div class="info-panel">
+        <div class="score-box">📐 СЧЁТ: <span id="scoreValue">0</span></div>
+        <div class="controls">
+            <div><span class="label">Выберите фон:</span><select id="bgColorSelect"><option value="#1a2a3a">Тёмный чертёж</option><option value="#2c2e3a">Математический грифель</option><option value="#1f3b3a">Мятная формула</option><option value="#442e3a">Фиолетовый интеграл</option></select></div>
+            <div><span class="label">персонаж:</span><select id="skinSelect"><option value="x">x</option><option value="y">y</option><option value="∫">∫ интеграл</option><option value="√">√ корень</option><option value="±">± плюс-минус</option></select></div>
+            <div><span class="label">скорость игры:</span><button data-diff="easy" class="difficulty-btn"> Лёгкая</button><button data-diff="medium" class="difficulty-btn active"> Средняя</button><button data-diff="hard" class="difficulty-btn"> Хардкор</button></div>
+        </div>
+    </div>
+</div>
+<div id="gameOverModal" class="modal">
+    <div class="modal-card"><h3>поражение</h3><div id="modalMessage"></div>
+    <div id="questionZone" style="display: none;"><div class="question-text" id="algebraQuestion"></div><input type="number" id="answerInput" placeholder="Введите число"><button id="submitAnswerBtn">✅ РЕШИТЬ</button></div>
+    <div class="modal-buttons"><button id="restartFromStartBtn" class="restart-btn">🔄 НАЧАТЬ СНАЧАЛА</button><button id="solveToContinueBtn" class="solve-btn"> РЕШИТЬ ЗАДАЧУ</button><button id="mainMenuBtn" class="menu-btn">🏠 ГЛАВНОЕ МЕНЮ</button></div>
+    <div class="message-small">Реши уравнение — продолжишь игру</div></div>
+</div>
+</body>
+</html>
