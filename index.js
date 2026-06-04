@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const settingsPanel = document.getElementById('settingsPanel');
     const menuBgSelect = document.getElementById('menuBgSelect');
     const menuSkinSelect = document.getElementById('menuSkinSelect');
-
     const BASE_W = 1050;
     const BASE_H = 650;
     let W = BASE_W, H = BASE_H;
@@ -174,13 +173,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!gameActive) return;
         bird.vy += GRAVITY;
         bird.y += bird.vy;
+
         if (bird.y - BIRD_RADIUS <= 0) {
-            bird.y = BIRD_RADIUS;
-            bird.vy = Math.abs(bird.vy) * 0.4;
+            gameOver();
+            return;
         }
         if (bird.y + BIRD_RADIUS >= H) {
-            bird.y = H - BIRD_RADIUS;
-            bird.vy = -Math.abs(bird.vy) * 0.4;
+            gameOver();
+            return;
         }
     }
 
@@ -421,18 +421,6 @@ document.addEventListener('DOMContentLoaded', function () {
             else ctx.fillStyle = "#3e2a1a";
             ctx.fillText(buttonSymbols[i], btnX + btnW / 2, btnY + btnH / 2);
         }
-
-        const equalW = calcW * 0.4;
-        const equalX = calcX + (calcW - equalW) / 2;
-        const equalY = startY + 3 * (btnH + gapY);
-        if (skinColor === 'dark') ctx.fillStyle = "#f5a623";
-        else ctx.fillStyle = "#dd8844";
-        ctx.fillRect(equalX, equalY, equalW, btnH);
-        if (skinColor === 'dark') ctx.fillStyle = "#000";
-        else ctx.fillStyle = "#3e2a1a";
-        ctx.fillText("=", equalX + equalW / 2, equalY + btnH / 2);
-
-        ctx.restore();
     }
 
     if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -503,7 +491,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setupMenuHandlers() {
         settingsToggleBtn.addEventListener('click', function () {
-            if (settingsPanel.style.display === 'none') {
+            const menuCard = document.querySelector('.menu-card');
+            menuCard.classList.toggle('settings-open');
+            if (settingsPanel.style.display === 'none' || settingsPanel.style.display === '') {
                 settingsPanel.style.display = 'block';
             } else {
                 settingsPanel.style.display = 'none';
