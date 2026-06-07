@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -8,9 +9,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="index.js"></script>
 </head>
+
 <body>
     <div id="bubbleContainer"></div>
     <div id="startMenu" class="menu-overlay">
+
         <div class="settings-corner menu__corner">
             <button id="settingsToggleBtn" class="settings-toggle-btn menu__toggle">⚙️</button>
         </div>
@@ -53,9 +56,12 @@
                 <div class="menu-setting-row menu__setting-row">
                     <span class="menu__label">Скорость игры:</span>
                     <div class="difficulty-group menu__difficulty-group">
-                        <button data-diff-menu="easy" class="difficulty-btn diff-menu-btn button--difficulty">Медленная</button>
-                        <button data-diff-menu="medium" class="difficulty-btn diff-menu-btn button--difficulty button--difficulty-active active">Средняя</button>
-                        <button data-diff-menu="hard" class="difficulty-btn diff-menu-btn button--difficulty">Быстрая</button>
+                        <button data-diff-menu="easy"
+                            class="difficulty-btn diff-menu-btn button--difficulty">Медленная</button>
+                        <button data-diff-menu="medium"
+                            class="difficulty-btn diff-menu-btn button--difficulty button--difficulty-active active">Средняя</button>
+                        <button data-diff-menu="hard"
+                            class="difficulty-btn diff-menu-btn button--difficulty">Быстрая</button>
                     </div>
                 </div>
             </div>
@@ -83,9 +89,12 @@
                 <button id="submitAnswerBtn" class="modal__button modal__button--submit">ОТВЕТИТЬ</button>
             </div>
             <div class="modal-buttons modal__buttons">
-                <button id="restartFromStartBtn" class="restart-btn modal__button modal__button--restart">НАЧАТЬ СНАЧАЛА</button>
-                <button id="solveToContinueBtn" class="solve-btn modal__button modal__button--solve">РЕШИТЬ ЗАДАЧУ</button>
-                <button id="mainMenuBtn" class="menu-btn button--menu modal__button modal__button--menu">ГЛАВНОЕ МЕНЮ</button>
+                <button id="restartFromStartBtn" class="restart-btn modal__button modal__button--restart">НАЧАТЬ
+                    СНАЧАЛА</button>
+                <button id="solveToContinueBtn" class="solve-btn modal__button modal__button--solve">РЕШИТЬ
+                    ЗАДАЧУ</button>
+                <button id="mainMenuBtn" class="menu-btn button--menu modal__button modal__button--menu">ГЛАВНОЕ
+                    МЕНЮ</button>
             </div>
         </div>
     </div>
@@ -93,11 +102,13 @@
     <div id="statsModal" class="modal">
         <div class="modal-card modal__card" style="max-width: 500px;">
             <h3 class="modal__title">История игр</h3>
-            <canvas id="statsChart" width="400" height="300" style="width:100%; max-width:400px; height:auto;" class="modal__chart"></canvas>
+            <canvas id="statsChart" width="400" height="300" style="width:100%; max-width:400px; height:auto;"
+                class="modal__chart"></canvas>
             <div class="modal-buttons modal__buttons">
                 <button id="closeStatsBtn" class="modal__button modal__button--close">Закрыть</button>
             </div>
         </div>
     </div>
 </body>
+
 </html>

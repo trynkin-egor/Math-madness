@@ -30,10 +30,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const solveBtn = document.getElementById('solveToContinueBtn');
     const mainMenuBtn = document.getElementById('mainMenuBtn');
     const playButton = document.getElementById('playButton');
-    const settingsToggleBtn = document.getElementById('settingsToggleBtn');
-    const settingsPanel = document.getElementById('settingsPanel');          // ← панель настроек
+    let settingsToggleBtn = document.getElementById('settingsToggleBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
     const menuBgSelect = document.getElementById('menuBgSelect');
     const menuSkinSelect = document.getElementById('menuSkinSelect');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
     const bubbleContainer = document.getElementById('bubbleContainer');
     const showStatsBtn = document.getElementById('showStatsBtn');
     const statsModal = document.getElementById('statsModal');
@@ -214,24 +216,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const calcH = this.radius * 2.2;
             const calcX = this.x - calcW / 2;
             const calcY = this.y - calcH / 2;
-
-            if (skinColor === 'dark') {
-                ctx.fillStyle = "#3a3f4a";
-                ctx.strokeStyle = "#2c2f36";
-                ctx.fillStyle = "#e6f7ff";
-                ctx.fillStyle = "#000";
-                ctx.fillStyle = "#c0c4cc";
-                ctx.fillStyle = "#1a1a1a";
-                ctx.fillStyle = "#f5a623";
-            } else {
-                ctx.fillStyle = "#f5e6c8";
-                ctx.strokeStyle = "#d4b88c";
-                ctx.fillStyle = "#fff8e7";
-                ctx.fillStyle = "#553b1f";
-                ctx.fillStyle = "#e0d6c0";
-                ctx.fillStyle = "#3e2a1a";
-                ctx.fillStyle = "#dd8844";
-            }
 
             ctx.beginPath();
             ctx.roundRect(calcX, calcY, calcW, calcH, 8);
@@ -489,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function () {
             modal.style.visibility = 'visible';
             modalMessage.style.display = 'block';
             questionZone.style.display = 'none';
-            modalMessage.innerText = `💥 СТОЛКНОВЕНИЕ! 💥\nВаш счёт: ${score}`;  // эмодзи
+            modalMessage.innerText = `💥 СТОЛКНОВЕНИЕ! 💥\nВаш счёт: ${score}`;
         }
     }
 
@@ -526,7 +510,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 gameActive = true;
             }, 1000);
         } else {
-            alert(`❌ Неверно! Ответ: ${currentEquation.answer}`);   // эмодзи
+            alert(`❌ Неверно! Ответ: ${currentEquation.answer}`);
             const newProb = generateAlgebraProblem();
             algebraQuestion.innerText = newProb.text;
             answerInput.value = '';
@@ -637,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("⏸ ПАУЗА", W / 2, H / 2);          // эмодзи
+        ctx.fillText("⏸ ПАУЗА", W / 2, H / 2);
         ctx.font = `20px monospace`;
         ctx.fillStyle = "#cccccc";
         ctx.fillText("Нажмите P или ESC для продолжения", W / 2, H / 2 + 60);
@@ -787,24 +771,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- НАСТРОЙКИ (панель, как в первом коде) ----------
     function setupMenuHandlers() {
-        const gameTitle = document.querySelector('.game-title') || document.querySelector('h1');
-        settingsToggleBtn.addEventListener('click', function () {
-            if (settingsPanel.style.display === 'none') {
-                if (adviceDisplay && adviceDisplay.style.display === 'block') {
-                    adviceDisplay.style.display = 'none';
-                    if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
-                }
-                settingsPanel.style.display = 'block';
-                if (gameTitle) gameTitle.style.display = 'none';
-                playButton.style.display = 'none';
-            } else {
-                settingsPanel.style.display = 'none';
-                if (gameTitle) gameTitle.style.display = 'block';
-                playButton.style.display = 'block';
-            }
-        });
+        if (closeSettingsBtn) {
+            closeSettingsBtn.addEventListener('click', () => {
+                settingsModal.classList.remove('modal--visible');
+            });
+        }
+
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) settingsModal.classList.remove('modal--visible');
+            });
+        }
 
         document.querySelectorAll('.diff-menu-btn').forEach(btn => {
             btn.addEventListener('click', function () {
@@ -812,16 +790,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 setDifficulty(diff);
             });
         });
-        menuBgSelect.addEventListener('change', function () {
-            bgColor = this.value;
-        });
-        menuSkinSelect.addEventListener('change', function () {
-            skinColor = this.value;
-        });
 
-        const themeBtn = document.querySelector('.theme-btn');
-        if (themeBtn) {
-            themeBtn.addEventListener('click', function () {
+        if (menuBgSelect) {
+            menuBgSelect.addEventListener('change', function () {
+                bgColor = this.value;
+            });
+        }
+
+        if (menuSkinSelect) {
+            menuSkinSelect.addEventListener('change', function () {
+                skinColor = this.value;
+            });
+        }
+
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', function () {
                 document.body.classList.toggle('light-theme');
                 const isLight = document.body.classList.contains('light-theme');
                 localStorage.setItem('game-theme', isLight ? 'light' : 'dark');
@@ -861,24 +844,38 @@ document.addEventListener('DOMContentLoaded', function () {
         loadGameHistory();
         applyDifficultyParameters();
         setupMenuHandlers();
-        playButton.addEventListener('click', startGame);
-        restartBtn.addEventListener('click', () => {
+
+        if (settingsToggleBtn) {
+            settingsToggleBtn.removeEventListener('click', null);
+            settingsToggleBtn.onclick = null;
+            const newBtn = settingsToggleBtn.cloneNode(true);
+            settingsToggleBtn.parentNode.replaceChild(newBtn, settingsToggleBtn);
+            settingsToggleBtn = newBtn;
+            settingsToggleBtn.addEventListener('click', function () {
+                if (adviceDisplay && adviceDisplay.style.display === 'block') {
+                    adviceDisplay.style.display = 'none';
+                    if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
+                }
+                if (settingsModal) settingsModal.classList.add('modal--visible');
+            });
+        }
+
+        if (playButton) playButton.addEventListener('click', startGame);
+        if (restartBtn) restartBtn.addEventListener('click', () => {
             hideModal();
             fullReset();
         });
-        solveBtn.addEventListener('click', activateSolveMode);
-        mainMenuBtn.addEventListener('click', returnToMainMenu);
-        submitAnswerBtn.addEventListener('click', checkSolution);
+        if (solveBtn) solveBtn.addEventListener('click', activateSolveMode);
+        if (mainMenuBtn) mainMenuBtn.addEventListener('click', returnToMainMenu);
+        if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', checkSolution);
         document.addEventListener('keydown', handleKeydown);
         canvas.addEventListener('click', handleCanvasClick);
-        modal.style.visibility = 'hidden';
-        settingsPanel.style.display = 'none';   // панель скрыта по умолчанию
+        if (modal) modal.style.visibility = 'hidden';
         initTheme();
         resizeCanvas();
         setGameStatsVisible(false);
     }
 
-    // ---------- СОВЕТЫ ----------
     const adviceBtn = document.getElementById('adviceBtn');
     const hideAdviceBtn = document.getElementById('hideAdviceBtn');
     const adviceDisplay = document.getElementById('adviceDisplay');
@@ -898,16 +895,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchRandomAdvice() {
         if (!adviceDisplay) return;
-
-        if (settingsPanel && settingsPanel.style.display === 'block') {
-            adviceDisplay.style.display = 'block';
-            adviceDisplay.innerHTML = '⚠️ Закройте настройки, чтобы получить совет.';
-            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
-            window.adviceTimeout = setTimeout(() => {
-                if (adviceDisplay) adviceDisplay.style.display = 'none';
-            }, 2000);
-            return;
-        }
 
         adviceDisplay.style.display = 'block';
         adviceDisplay.innerHTML = '⏳ Загрузка совета...';

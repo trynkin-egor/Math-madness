@@ -36,6 +36,10 @@
     --menu-bg-image: none;
 }
 
+.modal--visible {
+    visibility: visible;
+}
+
 * {
     margin: 0;
     padding: 0;
