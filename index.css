@@ -450,6 +450,7 @@ body {
     pointer-events: none;
     z-index: 1500;
 }
+
 .advice-display {
     margin-top: 12px;
     padding: 12px;
@@ -462,16 +463,59 @@ body {
     border-left: 4px solid #facc15;
     transition: all 0.3s ease;
     word-wrap: break-word;
+    min-height: 70px;
 }
+
 .light-theme .advice-display {
     background: rgba(255, 255, 255, 0.9);
     color: #1a2a3a;
 }
+
 #startMenu {
-  background-image: url('central.jpg');
-  background-size: cover;
-  background-position: center;
+    background-image: url('central.jpg');
+    background-size: cover;
+    background-position: center;
 }
+
 #adviceDisplay {
-  display: none;
+    display: none;
+}
+
+.advice-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.advice-btn {
+    background: #3b82f6;
+    border: none;
+    color: white;
+    font-weight: bold;
+    padding: 8px 20px;
+    border-radius: 40px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.advice-btn:hover {
+    background: #2563eb;
+}
+
+.settings-modal {
+    max-width: 90%;
+    width: 350px;
+    padding: 20px;
+}
+
+.settings-modal .menu__settings {
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.settings-modal .menu__setting-row {
+    justify-content: space-between;
+    flex-wrap: wrap;
 }

@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const mainMenuBtn = document.getElementById('mainMenuBtn');
     const playButton = document.getElementById('playButton');
     const settingsToggleBtn = document.getElementById('settingsToggleBtn');
-    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
     const menuBgSelect = document.getElementById('menuBgSelect');
     const menuSkinSelect = document.getElementById('menuSkinSelect');
     const bubbleContainer = document.getElementById('bubbleContainer');
@@ -389,9 +390,9 @@ document.addEventListener('DOMContentLoaded', function () {
         currentDifficulty = diff;
         applyDifficultyParameters();
         document.querySelectorAll('.difficulty-btn').forEach(btn => {
-            btn.classList.remove('active');
+            btn.classList.remove('active', 'button--difficulty-active');
             if (btn.getAttribute('data-diff-menu') === diff) {
-                btn.classList.add('active');
+                btn.classList.add('active', 'button--difficulty-active');
             }
         });
     }
@@ -489,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function () {
             modal.style.visibility = 'visible';
             modalMessage.style.display = 'block';
             questionZone.style.display = 'none';
-            modalMessage.innerText = `💥 СТОЛКНОВЕНИЕ! 💥\nВаш счёт: ${score}`;
+            modalMessage.innerText = `СТОЛКНОВЕНИЕ!\nВаш счёт: ${score}`;
         }
     }
 
@@ -526,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 gameActive = true;
             }, 1000);
         } else {
-            alert(`❌ Неверно! Ответ: ${currentEquation.answer}`);
+            alert(`Неверно! Ответ: ${currentEquation.answer}`);
             const newProb = generateAlgebraProblem();
             algebraQuestion.innerText = newProb.text;
             answerInput.value = '';
@@ -637,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("⏸ ПАУЗА", W / 2, H / 2);
+        ctx.fillText("ПАУЗА", W / 2, H / 2);
         ctx.font = `20px monospace`;
         ctx.fillStyle = "#cccccc";
         ctx.fillText("Нажмите P или ESC для продолжения", W / 2, H / 2 + 60);
@@ -788,21 +789,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function setupMenuHandlers() {
-        const gameTitle = document.querySelector('.game-title') || document.querySelector('h1');
         settingsToggleBtn.addEventListener('click', function () {
-            if (settingsPanel.style.display === 'none') {
-                if (adviceDisplay && adviceDisplay.style.display === 'block') {
-                    adviceDisplay.style.display = 'none';
-                    if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
-                }
-                settingsPanel.style.display = 'block';
-                if (gameTitle) gameTitle.style.display = 'none';
-                playButton.style.display = 'none';
-            } else {
-                settingsPanel.style.display = 'none';
-                if (gameTitle) gameTitle.style.display = 'block';
-                playButton.style.display = 'block';
-            }
+            settingsModal.style.visibility = 'visible';
+        });
+        if (closeSettingsBtn) {
+            closeSettingsBtn.addEventListener('click', () => {
+                settingsModal.style.visibility = 'hidden';
+            });
+        }
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) settingsModal.style.visibility = 'hidden';
         });
         document.querySelectorAll('.diff-menu-btn').forEach(btn => {
             btn.addEventListener('click', function () {
@@ -870,12 +866,12 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('keydown', handleKeydown);
         canvas.addEventListener('click', handleCanvasClick);
         modal.style.visibility = 'hidden';
-        settingsPanel.style.display = 'none';
         initTheme();
         resizeCanvas();
         setGameStatsVisible(false);
     }
     const adviceBtn = document.getElementById('adviceBtn');
+    const hideAdviceBtn = document.getElementById('hideAdviceBtn');
     const adviceDisplay = document.getElementById('adviceDisplay');
     window.adviceTimeout = null;
 
@@ -894,9 +890,9 @@ document.addEventListener('DOMContentLoaded', function () {
     async function fetchRandomAdvice() {
         if (!adviceDisplay) return;
 
-        if (settingsPanel && settingsPanel.style.display === 'block') {
+        if (settingsModal && settingsModal.style.visibility === 'visible') {
             adviceDisplay.style.display = 'block';
-            adviceDisplay.innerHTML = '⚠️ Закройте меню настроек, чтобы получить совет.';
+            adviceDisplay.innerHTML = 'Закройте настройки, чтобы получить совет.';
             if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
             window.adviceTimeout = setTimeout(() => {
                 if (adviceDisplay) adviceDisplay.style.display = 'none';
@@ -905,7 +901,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         adviceDisplay.style.display = 'block';
-        adviceDisplay.innerHTML = '⏳ Загрузка совета...';
+        adviceDisplay.innerHTML = 'Загрузка совета...';
 
         try {
             const response = await fetch('https://api.adviceslip.com/advice');
@@ -913,17 +909,17 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
             let adviceText = data.slip.advice;
 
-            adviceDisplay.innerHTML = '🔄 Перевод...';
+            adviceDisplay.innerHTML = 'Перевод...';
             const translatedText = await translateText(adviceText);
 
-            adviceDisplay.innerHTML = `💬 «${translatedText}»`;
+            adviceDisplay.innerHTML = `«${translatedText}»`;
             if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
             window.adviceTimeout = setTimeout(() => {
                 if (adviceDisplay) adviceDisplay.style.display = 'none';
             }, 8000);
         } catch (error) {
             console.warn('Ошибка загрузки совета:', error);
-            adviceDisplay.innerHTML = '❌ Не удалось загрузить совет. Попробуйте позже.';
+            adviceDisplay.innerHTML = 'Не удалось загрузить совет. Попробуйте позже.';
             if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
             window.adviceTimeout = setTimeout(() => {
                 if (adviceDisplay) adviceDisplay.style.display = 'none';
@@ -931,8 +927,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function hideAdvice() {
+        if (adviceDisplay) {
+            adviceDisplay.style.display = 'none';
+            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
+        }
+    }
+
     if (adviceBtn) {
         adviceBtn.addEventListener('click', fetchRandomAdvice);
+    }
+    if (hideAdviceBtn) {
+        hideAdviceBtn.addEventListener('click', hideAdvice);
     }
     init();
 });

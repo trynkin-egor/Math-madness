@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -9,10 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="index.js"></script>
 </head>
-К
-
 <body>
-    <div id="bubbleContainer"> </div>
+    <div id="bubbleContainer"></div>
     <div id="startMenu" class="menu-overlay">
         <div class="settings-corner menu__corner">
             <button id="settingsToggleBtn" class="settings-toggle-btn menu__toggle">⚙️</button>
@@ -20,53 +17,60 @@
         <div class="menu-card menu">
             <h1 id="gameTitle" class="menu__title">MATH MADNESS</h1>
             <div id="circlePanel" class="menu__circle-panel" style="margin-top: 20px; text-align: center;">
-                <button id="playButton" class="start-btn menu__start-btn">▶ НАЧАТЬ</button><br>
-                <button id="adviceBtn" class="menu-btn" style="margin-top: 10px;">💡 Случайный совет</button>
-                <div id="adviceDisplay" class="advice-display" style="display: none;"></div>
-                <div id="settingsPanel" class="settings-panel menu__settings-panel" style="display: none;">
-                    <div class="menu-settings menu__settings">
-                        <div class="menu-setting-row menu__setting-row">
-                            <span class="menu__label">Цвет фона:</span>
-                            <select id="menuBgSelect" class="menu__select">
-                                <option value="#1a2a3a">Тёмное пространство</option>
-                                <option value="#1f3b3a">Строгая классика</option>
-                                <option value="#442e3a">Необычная интерпретация</option>
-                            </select>
-                        </div>
-                        <div class="menu-setting-row menu__setting-row">
-                            <span class="menu__label">Скин персонажа:</span>
-                            <select id="menuSkinSelect" class="menu__select">
-                                <option value="dark">🌑 Тёмная версия</option>
-                                <option value="light">🌕 Светлая версия</option>
-                            </select>
-                        </div>
-                        <div class="menu-setting-row menu__setting-row">
-                            <span class="menu__label">Цветовая тема:</span>
-                            <button class="theme-btn button--theme" id="themeToggleBtn">Смена темы
-                                (светлая/темная)</button>
-                        </div>
-                        <div class="menu-setting-row menu__setting-row">
-                            <span class="menu__label">⚡️🌩️ Скорость персонажа:</span>
-                            <div class="difficulty-group menu__difficulty-group">
-                                <button data-diff-menu="easy"
-                                    class="difficulty-btn diff-menu-btn button--difficulty">Медленная</button>
-                                <button data-diff-menu="medium"
-                                    class="difficulty-btn diff-menu-btn button--difficulty button--difficulty-active active">Средняя</button>
-                                <button data-diff-menu="hard"
-                                    class="difficulty-btn diff-menu-btn button--difficulty">Быстрая</button>
-                            </div>
-                        </div>
-                    </div>
+                <button id="playButton" class="start-btn menu__start-btn">НАЧАТЬ</button>
+                <div class="advice-buttons">
+                    <button id="adviceBtn" class="advice-btn">Случайный совет</button>
+                    <button id="hideAdviceBtn" class="advice-btn">Скрыть совет</button>
                 </div>
+                <div id="adviceDisplay" class="advice-display" style="display: none;"></div>
             </div>
         </div>
     </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal__card settings-modal">
+            <h3 style="margin-bottom: 20px;">Настройки</h3>
+            <div class="menu-settings menu__settings">
+                <div class="menu-setting-row menu__setting-row">
+                    <span class="menu__label">Цвет фона:</span>
+                    <select id="menuBgSelect" class="menu__select">
+                        <option value="#1a2a3a">Тёмное пространство</option>
+                        <option value="#1f3b3a">Строгая классика</option>
+                        <option value="#442e3a">Необычная интерпретация</option>
+                    </select>
+                </div>
+                <div class="menu-setting-row menu__setting-row">
+                    <span class="menu__label">Скин персонажа:</span>
+                    <select id="menuSkinSelect" class="menu__select">
+                        <option value="dark">Тёмная версия</option>
+                        <option value="light">Светлая версия</option>
+                    </select>
+                </div>
+                <div class="menu-setting-row menu__setting-row">
+                    <span class="menu__label">Цветовая тема:</span>
+                    <button class="theme-btn button--theme" id="themeToggleBtn">Смена темы</button>
+                </div>
+                <div class="menu-setting-row menu__setting-row">
+                    <span class="menu__label">Скорость игры:</span>
+                    <div class="difficulty-group menu__difficulty-group">
+                        <button data-diff-menu="easy" class="difficulty-btn diff-menu-btn button--difficulty">Медленная</button>
+                        <button data-diff-menu="medium" class="difficulty-btn diff-menu-btn button--difficulty button--difficulty-active active">Средняя</button>
+                        <button data-diff-menu="hard" class="difficulty-btn diff-menu-btn button--difficulty">Быстрая</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons modal__buttons">
+                <button id="closeSettingsBtn" class="modal__button modal__button--close">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <div class="game-container game">
         <canvas id="gameCanvas" width="1050" height="650" class="game__canvas"></canvas>
         <div class="info-panel game__info-panel">
-            <div class="score-box game__score">📈 СЧЁТ 📉: <span id="scoreValue">0</span></div>
-            <div class="record game__record">🪎 РЕКОРД 🪎: <span id="recordValue">0</span></div>
-            <button id="showStatsBtn" class="stats-btn game__stats-btn">📊 Статистика</button>
+            <div class="score-box game__score">СЧЁТ: <span id="scoreValue">0</span></div>
+            <div class="record game__record">РЕКОРД: <span id="recordValue">0</span></div>
+            <button id="showStatsBtn" class="stats-btn game__stats-btn">Статистика</button>
         </div>
     </div>
 
@@ -76,29 +80,24 @@
             <div id="questionZone" style="display: none;">
                 <div class="question-text modal__question-text" id="algebraQuestion"></div>
                 <input type="number" id="answerInput" class="modal__input" placeholder="Введите число">
-                <button id="submitAnswerBtn" class="modal__button modal__button--submit">✅ ОТВЕТИТЬ ❔</button>
+                <button id="submitAnswerBtn" class="modal__button modal__button--submit">ОТВЕТИТЬ</button>
             </div>
             <div class="modal-buttons modal__buttons">
-                <button id="restartFromStartBtn" class="restart-btn modal__button modal__button--restart">НАЧАТЬ ИГРУ
-                    СНАЧАЛА</button>
-                <button id="solveToContinueBtn" class="solve-btn modal__button modal__button--solve">РЕШИТЬ
-                    ЗАДАЧУ</button>
-                <button id="mainMenuBtn" class="menu-btn button--menu modal__button modal__button--menu">ГЛАВНОЕ
-                    МЕНЮ</button>
+                <button id="restartFromStartBtn" class="restart-btn modal__button modal__button--restart">НАЧАТЬ СНАЧАЛА</button>
+                <button id="solveToContinueBtn" class="solve-btn modal__button modal__button--solve">РЕШИТЬ ЗАДАЧУ</button>
+                <button id="mainMenuBtn" class="menu-btn button--menu modal__button modal__button--menu">ГЛАВНОЕ МЕНЮ</button>
             </div>
         </div>
     </div>
 
     <div id="statsModal" class="modal">
         <div class="modal-card modal__card" style="max-width: 500px;">
-            <h3 class="modal__title">📊 История игр</h3>
-            <canvas id="statsChart" width="400" height="300" style="width:100%; max-width:400px; height:auto;"
-                class="modal__chart"></canvas>
+            <h3 class="modal__title">История игр</h3>
+            <canvas id="statsChart" width="400" height="300" style="width:100%; max-width:400px; height:auto;" class="modal__chart"></canvas>
             <div class="modal-buttons modal__buttons">
                 <button id="closeStatsBtn" class="modal__button modal__button--close">Закрыть</button>
             </div>
         </div>
     </div>
 </body>
-
 </html>
