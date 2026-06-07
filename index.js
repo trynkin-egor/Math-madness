@@ -35,7 +35,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const menuBgSelect = document.getElementById('menuBgSelect');
     const menuSkinSelect = document.getElementById('menuSkinSelect');
     const bubbleContainer = document.getElementById('bubbleContainer');
+    const showStatsBtn = document.getElementById('showStatsBtn');
+    const statsModal = document.getElementById('statsModal');
+    const closeStatsBtn = document.getElementById('closeStatsBtn');
     let bubbleInterval = null;
+
+    function setGameStatsVisible(visible) {
+        const elements = [scoreSpan, recordSpan, showStatsBtn];
+        elements.forEach(el => {
+            if (el) {
+                el.style.display = visible ? '' : 'none';
+            }
+        });
+    }
 
     function createBubble() {
         if (!gameActive || isPaused || !isGameStarted) return;
@@ -564,6 +576,7 @@ document.addEventListener('DOMContentLoaded', function () {
             gameLoop();
         }
         startBubbleGeneration();
+        setGameStatsVisible(true);
     }
 
     function returnToMainMenu() {
@@ -576,6 +589,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         hideModal();
         startMenu.style.display = 'flex';
+        setGameStatsVisible(false);
     }
 
     function drawBackground() {
@@ -717,7 +731,7 @@ document.addEventListener('DOMContentLoaded', function () {
             difficulty: currentDifficulty
         });
         saveGameHistory();
-        if (chartInstance && document.getElementById('statsModal').style.visibility === 'visible') {
+        if (chartInstance && statsModal && statsModal.style.visibility === 'visible') {
             renderChart();
         }
     }
@@ -777,6 +791,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const gameTitle = document.querySelector('.game-title') || document.querySelector('h1');
         settingsToggleBtn.addEventListener('click', function () {
             if (settingsPanel.style.display === 'none') {
+                if (adviceDisplay && adviceDisplay.style.display === 'block') {
+                    adviceDisplay.style.display = 'none';
+                    if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
+                }
                 settingsPanel.style.display = 'block';
                 if (gameTitle) gameTitle.style.display = 'none';
                 playButton.style.display = 'none';
@@ -805,15 +823,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.body.classList.toggle('light-theme');
                 const isLight = document.body.classList.contains('light-theme');
                 localStorage.setItem('game-theme', isLight ? 'light' : 'dark');
-                if (chartInstance && document.getElementById('statsModal').style.visibility === 'visible') {
+                if (chartInstance && statsModal && statsModal.style.visibility === 'visible') {
                     renderChart();
                 }
             });
         }
-
-        const showStatsBtn = document.getElementById('showStatsBtn');
-        const statsModal = document.getElementById('statsModal');
-        const closeStatsBtn = document.getElementById('closeStatsBtn');
 
         if (showStatsBtn) {
             showStatsBtn.addEventListener('click', () => {
@@ -859,9 +873,11 @@ document.addEventListener('DOMContentLoaded', function () {
         settingsPanel.style.display = 'none';
         initTheme();
         resizeCanvas();
+        setGameStatsVisible(false);
     }
     const adviceBtn = document.getElementById('adviceBtn');
     const adviceDisplay = document.getElementById('adviceDisplay');
+    window.adviceTimeout = null;
 
     async function translateText(text, targetLang = 'ru') {
         try {
@@ -870,13 +886,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
             return data.responseData.translatedText;
         } catch (error) {
-            console.error('Ошибка перевода:', error);
+            console.warn('Ошибка перевода:', error);
             return text;
         }
     }
 
     async function fetchRandomAdvice() {
         if (!adviceDisplay) return;
+
+        if (settingsPanel && settingsPanel.style.display === 'block') {
+            adviceDisplay.style.display = 'block';
+            adviceDisplay.innerHTML = '⚠️ Закройте меню настроек, чтобы получить совет.';
+            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
+            window.adviceTimeout = setTimeout(() => {
+                if (adviceDisplay) adviceDisplay.style.display = 'none';
+            }, 2000);
+            return;
+        }
+
         adviceDisplay.style.display = 'block';
         adviceDisplay.innerHTML = '⏳ Загрузка совета...';
 
@@ -890,13 +917,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const translatedText = await translateText(adviceText);
 
             adviceDisplay.innerHTML = `💬 «${translatedText}»`;
-            setTimeout(() => {
+            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
+            window.adviceTimeout = setTimeout(() => {
                 if (adviceDisplay) adviceDisplay.style.display = 'none';
             }, 8000);
         } catch (error) {
-            console.error('Ошибка загрузки совета:', error);
+            console.warn('Ошибка загрузки совета:', error);
             adviceDisplay.innerHTML = '❌ Не удалось загрузить совет. Попробуйте позже.';
-            setTimeout(() => {
+            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
+            window.adviceTimeout = setTimeout(() => {
                 if (adviceDisplay) adviceDisplay.style.display = 'none';
             }, 3000);
         }
