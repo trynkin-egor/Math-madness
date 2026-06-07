@@ -36,10 +36,6 @@
     --menu-bg-image: none;
 }
 
-.modal--visible {
-    visibility: visible;
-}
-
 * {
     margin: 0;
     padding: 0;
@@ -73,6 +69,10 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+}
+
+.modal--visible {
+    visibility: visible;
 }
 
 .game__canvas {
@@ -261,6 +261,81 @@ body {
     background: rgba(0, 0, 0, 0.8);
 }
 
+#adviceDisplay {
+    display: none;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 20px;
+    padding: 12px;
+    font-size: 0.9rem;
+    color: #fff;
+    text-align: center;
+    backdrop-filter: blur(8px);
+    border-left: 4px solid #facc15;
+    margin-top: 12px;
+    word-break: break-word;
+}
+
+.light-theme #adviceDisplay {
+    background: rgba(255, 255, 255, 0.9);
+    color: #1a2a3a;
+}
+
+.close-advice-btn {
+    background: #3b82f6;
+    border: none;
+    color: white;
+    font-weight: bold;
+    padding: 6px 16px;
+    border-radius: 40px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    margin-top: 8px;
+    transition: 0.2s;
+    display: inline-block;
+}
+
+.close-advice-btn:hover {
+    background: #2563eb;
+    transform: scale(1.02);
+}
+
+.game__difficulty {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px 12px;
+    border-radius: 40px;
+    font-size: 0.9rem;
+}
+
+.diff-game-btn {
+    background: #2c3e2f;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    padding: 4px 10px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.diff-game-btn.active {
+    background: #3b82f6;
+    box-shadow: 0 0 5px #60a5fa;
+}
+
+.light-theme .diff-game-btn {
+    background: #cbd5e1;
+    color: #1e293b;
+}
+
+.light-theme .diff-game-btn.active {
+    background: #2563eb;
+    color: white;
+}
+
 .menu {
     aspect-ratio: 1 / 1;
     width: min(90%, 500px);
@@ -413,6 +488,16 @@ body {
     }
 }
 
+.bubbleContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1500;
+}
+
 @media (max-width: 400px) {
     .menu {
         width: 95%;
@@ -445,81 +530,22 @@ body {
     }
 }
 
-.bubbleContainer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1500;
-}
-
-.advice-display {
-    margin-top: 12px;
-    padding: 12px;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 20px;
-    font-size: 0.9rem;
-    color: #fff;
-    text-align: center;
-    backdrop-filter: blur(8px);
-    border-left: 4px solid #facc15;
-    transition: all 0.3s ease;
-    word-wrap: break-word;
-    min-height: 70px;
-}
-
-.light-theme .advice-display {
-    background: rgba(255, 255, 255, 0.9);
-    color: #1a2a3a;
-}
-
-#startMenu {
-    background-image: url('central.jpg');
-    background-size: cover;
-    background-position: center;
-}
-
-#adviceDisplay {
-    display: none;
-}
-
-.advice-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 10px;
-}
-
-.advice-btn {
+.stats-btn,
+#adviceBtn {
     background: #3b82f6;
     border: none;
     color: white;
     font-weight: bold;
     padding: 8px 20px;
     border-radius: 40px;
-    font-size: 0.9rem;
+    font-size: 1rem;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.advice-btn:hover {
+.stats-btn:hover,
+#adviceBtn:hover {
     background: #2563eb;
-}
-
-.settings-modal {
-    max-width: 90%;
-    width: 350px;
-    padding: 20px;
-}
-
-.settings-modal .menu__settings {
-    gap: 16px;
-    margin-bottom: 20px;
-}
-
-.settings-modal .menu__setting-row {
-    justify-content: space-between;
-    flex-wrap: wrap;
+    transform: scale(1.02);
 }

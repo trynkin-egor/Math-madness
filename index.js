@@ -30,12 +30,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const solveBtn = document.getElementById('solveToContinueBtn');
     const mainMenuBtn = document.getElementById('mainMenuBtn');
     const playButton = document.getElementById('playButton');
-    let settingsToggleBtn = document.getElementById('settingsToggleBtn');
-    const settingsModal = document.getElementById('settingsModal');
-    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    const settingsToggleBtn = document.getElementById('settingsToggleBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
     const menuBgSelect = document.getElementById('menuBgSelect');
     const menuSkinSelect = document.getElementById('menuSkinSelect');
-    const themeToggleBtn = document.getElementById('themeToggleBtn');
     const bubbleContainer = document.getElementById('bubbleContainer');
     const showStatsBtn = document.getElementById('showStatsBtn');
     const statsModal = document.getElementById('statsModal');
@@ -53,21 +51,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function createBubble() {
         if (!gameActive || isPaused || !isGameStarted) return;
-
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
         const maxX = window.innerWidth - 60;
         const maxY = window.innerHeight - 60;
         bubble.style.left = Math.random() * maxX + 'px';
         bubble.style.top = Math.random() * maxY + 'px';
-
         const autoTimer = setTimeout(() => {
             if (bubble && bubble.parentNode) bubble.remove();
         }, 3000);
         bubble.autoRemoveTimer = autoTimer;
-
         bubble.addEventListener('click', () => popSingleBubble(bubble));
-
         bubbleContainer.appendChild(bubble);
     }
 
@@ -84,8 +78,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function popAllBubbles() {
         if (!gameActive || isPaused || !isGameStarted) return;
         const bubbles = document.querySelectorAll('.bubble');
-        if (bubbles.length === 0) return;
-
         for (let bubble of bubbles) {
             if (bubble.autoRemoveTimer) clearTimeout(bubble.autoRemoveTimer);
             bubble.remove();
@@ -216,6 +208,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const calcH = this.radius * 2.2;
             const calcX = this.x - calcW / 2;
             const calcY = this.y - calcH / 2;
+
+            if (skinColor === 'dark') {
+                ctx.fillStyle = "#3a3f4a";
+                ctx.strokeStyle = "#2c2f36";
+                ctx.fillStyle = "#e6f7ff";
+                ctx.fillStyle = "#000";
+                ctx.fillStyle = "#c0c4cc";
+                ctx.fillStyle = "#1a1a1a";
+                ctx.fillStyle = "#f5a623";
+            } else {
+                ctx.fillStyle = "#f5e6c8";
+                ctx.strokeStyle = "#d4b88c";
+                ctx.fillStyle = "#fff8e7";
+                ctx.fillStyle = "#553b1f";
+                ctx.fillStyle = "#e0d6c0";
+                ctx.fillStyle = "#3e2a1a";
+                ctx.fillStyle = "#dd8844";
+            }
 
             ctx.beginPath();
             ctx.roundRect(calcX, calcY, calcW, calcH, 8);
@@ -369,13 +379,27 @@ document.addEventListener('DOMContentLoaded', function () {
         spawnDelay = settings.spawnDelay;
     }
 
+    function setDifficultyInGame(diff) {
+        if (!difficultySettings[diff]) return;
+        currentDifficulty = diff;
+        applyDifficultyParameters();
+        document.querySelectorAll('.diff-game-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-diff') === diff) btn.classList.add('active');
+        });
+        document.querySelectorAll('.diff-menu-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-diff-menu') === diff) btn.classList.add('active');
+        });
+    }
+
     function setDifficulty(diff) {
         currentDifficulty = diff;
         applyDifficultyParameters();
         document.querySelectorAll('.difficulty-btn').forEach(btn => {
-            btn.classList.remove('active', 'button--difficulty-active');
+            btn.classList.remove('active');
             if (btn.getAttribute('data-diff-menu') === diff) {
-                btn.classList.add('active', 'button--difficulty-active');
+                btn.classList.add('active');
             }
         });
     }
@@ -489,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function checkSolution() {
         const userAnswer = parseFloat(answerInput.value);
         if (isNaN(userAnswer)) {
-            alert("❌ Введите число!");
+            alert("Введите число!");
             return;
         }
         if (Math.abs(userAnswer - currentEquation.answer) < 0.01) {
@@ -552,6 +576,7 @@ document.addEventListener('DOMContentLoaded', function () {
             playerBird.gravity = GRAVITY;
             playerBird.jumpForce = JUMP_FORCE;
         }
+        setDifficultyInGame(currentDifficulty);
         fullReset();
         startMenu.style.display = 'none';
         isGameStarted = true;
@@ -771,40 +796,111 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    async function translateText(text, targetLang = 'ru') {
+        try {
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetLang}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.responseData.translatedText;
+        } catch (error) {
+            console.warn('Ошибка перевода:', error);
+            return text;
+        }
+    }
+
+    async function fetchRandomAdvice() {
+        const adviceDisplay = document.getElementById('adviceDisplay');
+        if (!adviceDisplay) return;
+
+        if (settingsPanel.style.display === 'block') {
+            adviceDisplay.style.display = 'block';
+            adviceDisplay.innerHTML = '⚠️ Закройте меню настроек, чтобы получить совет.<br><button class="close-advice-btn">✖ Закрыть</button>';
+            const closeBtn = adviceDisplay.querySelector('.close-advice-btn');
+            if (closeBtn) closeBtn.onclick = () => {
+                adviceDisplay.style.display = 'none';
+                adviceDisplay.innerHTML = '';
+            };
+            setTimeout(() => {
+                if (adviceDisplay.style.display === 'block') adviceDisplay.style.display = 'none';
+            }, 3000);
+            return;
+        }
+
+        adviceDisplay.style.display = 'block';
+        adviceDisplay.innerHTML = '⏳ Загрузка совета...';
+
+        try {
+            const response = await fetch('https://api.adviceslip.com/advice');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            let adviceText = data.slip.advice;
+            adviceDisplay.innerHTML = '🔄 Перевод...';
+            const translatedText = await translateText(adviceText);
+            adviceDisplay.innerHTML = `💬 «${translatedText}»<br><button class="close-advice-btn">✖ Закрыть</button>`;
+            const closeBtn = adviceDisplay.querySelector('.close-advice-btn');
+            if (closeBtn) closeBtn.onclick = () => {
+                adviceDisplay.style.display = 'none';
+                adviceDisplay.innerHTML = '';
+            };
+            setTimeout(() => {
+                if (adviceDisplay.style.display === 'block') adviceDisplay.style.display = 'none';
+            }, 8000);
+        } catch (error) {
+            console.warn('Ошибка загрузки совета:', error);
+            adviceDisplay.innerHTML = '❌ Не удалось загрузить совет. Попробуйте позже.<br><button class="close-advice-btn">✖ Закрыть</button>';
+            const closeBtn = adviceDisplay.querySelector('.close-advice-btn');
+            if (closeBtn) closeBtn.onclick = () => {
+                adviceDisplay.style.display = 'none';
+                adviceDisplay.innerHTML = '';
+            };
+            setTimeout(() => {
+                if (adviceDisplay.style.display === 'block') adviceDisplay.style.display = 'none';
+            }, 3000);
+        }
+    }
+
     function setupMenuHandlers() {
-        if (closeSettingsBtn) {
-            closeSettingsBtn.addEventListener('click', () => {
-                settingsModal.classList.remove('modal--visible');
-            });
-        }
-
-        if (settingsModal) {
-            settingsModal.addEventListener('click', (e) => {
-                if (e.target === settingsModal) settingsModal.classList.remove('modal--visible');
-            });
-        }
-
+        const gameTitle = document.querySelector('.game-title') || document.querySelector('h1');
+        settingsToggleBtn.addEventListener('click', function () {
+            if (settingsPanel.style.display === 'none') {
+                if (adviceDisplay && adviceDisplay.style.display === 'block') {
+                    adviceDisplay.style.display = 'none';
+                    if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
+                }
+                settingsPanel.style.display = 'block';
+                if (gameTitle) gameTitle.style.display = 'none';
+                playButton.style.display = 'none';
+            } else {
+                settingsPanel.style.display = 'none';
+                if (gameTitle) gameTitle.style.display = 'block';
+                playButton.style.display = 'block';
+            }
+        });
         document.querySelectorAll('.diff-menu-btn').forEach(btn => {
             btn.addEventListener('click', function () {
                 const diff = this.getAttribute('data-diff-menu');
                 setDifficulty(diff);
+                if (isGameStarted) {
+                    setDifficultyInGame(diff);
+                }
             });
         });
-
-        if (menuBgSelect) {
-            menuBgSelect.addEventListener('change', function () {
-                bgColor = this.value;
+        document.querySelectorAll('.diff-game-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const diff = this.getAttribute('data-diff');
+                setDifficultyInGame(diff);
             });
-        }
+        });
+        menuBgSelect.addEventListener('change', function () {
+            bgColor = this.value;
+        });
+        menuSkinSelect.addEventListener('change', function () {
+            skinColor = this.value;
+        });
 
-        if (menuSkinSelect) {
-            menuSkinSelect.addEventListener('change', function () {
-                skinColor = this.value;
-            });
-        }
-
-        if (themeToggleBtn) {
-            themeToggleBtn.addEventListener('click', function () {
+        const themeBtn = document.querySelector('.theme-btn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', function () {
                 document.body.classList.toggle('light-theme');
                 const isLight = document.body.classList.contains('light-theme');
                 localStorage.setItem('game-theme', isLight ? 'light' : 'dark');
@@ -844,97 +940,27 @@ document.addEventListener('DOMContentLoaded', function () {
         loadGameHistory();
         applyDifficultyParameters();
         setupMenuHandlers();
-
-        if (settingsToggleBtn) {
-            settingsToggleBtn.removeEventListener('click', null);
-            settingsToggleBtn.onclick = null;
-            const newBtn = settingsToggleBtn.cloneNode(true);
-            settingsToggleBtn.parentNode.replaceChild(newBtn, settingsToggleBtn);
-            settingsToggleBtn = newBtn;
-            settingsToggleBtn.addEventListener('click', function () {
-                if (adviceDisplay && adviceDisplay.style.display === 'block') {
-                    adviceDisplay.style.display = 'none';
-                    if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
-                }
-                if (settingsModal) settingsModal.classList.add('modal--visible');
-            });
-        }
-
-        if (playButton) playButton.addEventListener('click', startGame);
-        if (restartBtn) restartBtn.addEventListener('click', () => {
+        playButton.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', () => {
             hideModal();
             fullReset();
         });
-        if (solveBtn) solveBtn.addEventListener('click', activateSolveMode);
-        if (mainMenuBtn) mainMenuBtn.addEventListener('click', returnToMainMenu);
-        if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', checkSolution);
+        solveBtn.addEventListener('click', activateSolveMode);
+        mainMenuBtn.addEventListener('click', returnToMainMenu);
+        submitAnswerBtn.addEventListener('click', checkSolution);
         document.addEventListener('keydown', handleKeydown);
         canvas.addEventListener('click', handleCanvasClick);
-        if (modal) modal.style.visibility = 'hidden';
+        modal.style.visibility = 'hidden';
+        settingsPanel.style.display = 'none';
         initTheme();
         resizeCanvas();
         setGameStatsVisible(false);
+        const adviceDisplay = document.getElementById('adviceDisplay');
+        if (adviceDisplay) adviceDisplay.style.display = 'none';
     }
-
     const adviceBtn = document.getElementById('adviceBtn');
-    const hideAdviceBtn = document.getElementById('hideAdviceBtn');
-    const adviceDisplay = document.getElementById('adviceDisplay');
-    window.adviceTimeout = null;
-
-    async function translateText(text, targetLang = 'ru') {
-        try {
-            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetLang}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            return data.responseData.translatedText;
-        } catch (error) {
-            console.warn('Ошибка перевода:', error);
-            return text;
-        }
-    }
-
-    async function fetchRandomAdvice() {
-        if (!adviceDisplay) return;
-
-        adviceDisplay.style.display = 'block';
-        adviceDisplay.innerHTML = '⏳ Загрузка совета...';
-
-        try {
-            const response = await fetch('https://api.adviceslip.com/advice');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            let adviceText = data.slip.advice;
-
-            adviceDisplay.innerHTML = '🔄 Перевод...';
-            const translatedText = await translateText(adviceText);
-
-            adviceDisplay.innerHTML = `💬 «${translatedText}»`;
-            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
-            window.adviceTimeout = setTimeout(() => {
-                if (adviceDisplay) adviceDisplay.style.display = 'none';
-            }, 8000);
-        } catch (error) {
-            console.warn('Ошибка загрузки совета:', error);
-            adviceDisplay.innerHTML = '❌ Не удалось загрузить совет. Попробуйте позже.';
-            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
-            window.adviceTimeout = setTimeout(() => {
-                if (adviceDisplay) adviceDisplay.style.display = 'none';
-            }, 3000);
-        }
-    }
-
-    function hideAdvice() {
-        if (adviceDisplay) {
-            adviceDisplay.style.display = 'none';
-            if (window.adviceTimeout) clearTimeout(window.adviceTimeout);
-        }
-    }
-
     if (adviceBtn) {
         adviceBtn.addEventListener('click', fetchRandomAdvice);
-    }
-    if (hideAdviceBtn) {
-        hideAdviceBtn.addEventListener('click', hideAdvice);
     }
     init();
 });
