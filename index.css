@@ -467,3 +467,11 @@ body {
     background: rgba(255, 255, 255, 0.9);
     color: #1a2a3a;
 }
+#startMenu {
+  background-image: url('central.jpg');
+  background-size: cover;
+  background-position: center;
+}
+#adviceDisplay {
+  display: none;
+}
