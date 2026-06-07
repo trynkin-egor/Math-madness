@@ -1,6 +1,22 @@
 document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            this.moveTo(x + r, y);
+            this.lineTo(x + w - r, y);
+            this.quadraticCurveTo(x + w, y, x + w, y + r);
+            this.lineTo(x + w, y + h - r);
+            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            this.lineTo(x + r, y + h);
+            this.quadraticCurveTo(x, y + h, x, y + h - r);
+            this.lineTo(x, y + r);
+            this.quadraticCurveTo(x, y, x + r, y);
+            return this;
+        };
+    }
     const scoreSpan = document.getElementById('scoreValue');
     const recordSpan = document.getElementById('recordValue');
     const startMenu = document.getElementById('startMenu');
@@ -18,8 +34,83 @@ document.addEventListener('DOMContentLoaded', function () {
     const settingsPanel = document.getElementById('settingsPanel');
     const menuBgSelect = document.getElementById('menuBgSelect');
     const menuSkinSelect = document.getElementById('menuSkinSelect');
+    const bubbleContainer = document.getElementById('bubbleContainer');
+    let bubbleInterval = null;
+
+    function createBubble() {
+        if (!gameActive || isPaused || !isGameStarted) return;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        const maxX = window.innerWidth - 60;
+        const maxY = window.innerHeight - 60;
+        bubble.style.left = Math.random() * maxX + 'px';
+        bubble.style.top = Math.random() * maxY + 'px';
+
+        const autoTimer = setTimeout(() => {
+            if (bubble && bubble.parentNode) bubble.remove();
+        }, 3000);
+        bubble.autoRemoveTimer = autoTimer;
+
+        bubble.addEventListener('click', () => popSingleBubble(bubble));
+
+        bubbleContainer.appendChild(bubble);
+    }
+
+    function popSingleBubble(bubble) {
+        if (!gameActive || isPaused || !isGameStarted) return;
+        if (!bubble || !bubble.parentNode) return;
+        if (bubble.autoRemoveTimer) clearTimeout(bubble.autoRemoveTimer);
+        bubble.remove();
+        score += 5;
+        updateScoreUI();
+        saveBestScore();
+    }
+
+    function popAllBubbles() {
+        if (!gameActive || isPaused || !isGameStarted) return;
+        const bubbles = document.querySelectorAll('.bubble');
+        if (bubbles.length === 0) return;
+
+        for (let bubble of bubbles) {
+            if (bubble.autoRemoveTimer) clearTimeout(bubble.autoRemoveTimer);
+            bubble.remove();
+            score += 5;
+        }
+        updateScoreUI();
+        saveBestScore();
+    }
+
+    function startBubbleGeneration() {
+        if (bubbleInterval) clearInterval(bubbleInterval);
+        bubbleInterval = setInterval(() => {
+            if (gameActive && !isPaused && isGameStarted) {
+                createBubble();
+            }
+        }, 4500);
+    }
+
+    function stopBubbleGeneration() {
+        if (bubbleInterval) {
+            clearInterval(bubbleInterval);
+            bubbleInterval = null;
+        }
+        const bubbles = document.querySelectorAll('.bubble');
+        bubbles.forEach(b => {
+            if (b.autoRemoveTimer) clearTimeout(b.autoRemoveTimer);
+            b.remove();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'KeyO') {
+            e.preventDefault();
+            popAllBubbles();
+        }
+    });
     const BASE_W = 1050;
     const BASE_H = 650;
+
     let W = BASE_W, H = BASE_H;
 
     let BIRD_RADIUS = 22;
@@ -29,18 +120,16 @@ document.addEventListener('DOMContentLoaded', function () {
     let OBSTACLE_W = 55;
     const INVINCIBLE_DURATION = 25;
 
-    let bird = { x: BIRD_START_X, y: H / 2, vy: 0, radius: BIRD_RADIUS };
-    let skinColor = 'dark';
     let obstacles = [];
     let score = 0;
     let bestScore = 0;
     let gameActive = false;
     let isGameStarted = false;
     let animationId = null;
-    let invincibleFrames = 0;
     let killerObstacleIndex = -1;
     let frameCounter = 0;
     let afterResolvePause = false;
+    let isPaused = false;
     let currentDifficulty = 'medium';
     let currentSpeed = 3.5;
     let currentGap = 165;
@@ -52,15 +141,168 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     let bgColor = "#1a2a3a";
+    let skinColor = 'dark';
 
     const mathFormulas = [
-        "E=mc²", "a²+b²=c²", "sin²α+cos²α=1",
-        "∫ x² dx", "π ≈ 3.14159", "e = 2.71828",
-        "√(a²+b²)", "∑(n²)", "lim f(x)",
-        "x = [-b±√Δ]/2a", "ctg α * tg α = 1", "∂f/∂x"
+        "E=mc²", "a²+b²=c²", "sin²α+cos²α=1", "∫ x² dx", "π ≈ 3.14159",
+        "e = 2.71828", "√(a²+b²)", "∑(n²)", "lim f(x)", "x = [-b±√Δ]/2a",
+        "ctg α * tg α = 1", "∂f/∂x", "logₐ(b)=ln(b)/ln(a)", "i² = -1",
+        "F = ma", "E = hν", "PV = nRT", "sin²x+cos²x=1",
+        "∫e^x dx = e^x", "(a+b)²=a²+2ab+b²", "y = kx + b"
     ];
 
     let currentEquation = { text: "", answer: 0 };
+    let chalkFormulas = [];
+
+    let gameScores = [];
+    let chartInstance = null;
+
+    class Bird {
+        constructor(x, y, radius, gravity, jumpForce, canvasHeight) {
+            this.x = x;
+            this.y = y;
+            this.vy = 0;
+            this.radius = radius;
+            this.gravity = gravity;
+            this.jumpForce = jumpForce;
+            this.canvasHeight = canvasHeight;
+            this.invincibleFrames = 0;
+        }
+
+        update() {
+            this.vy += this.gravity;
+            this.y += this.vy;
+        }
+
+        jump() {
+            this.vy = this.jumpForce;
+        }
+
+        isAlive() {
+            return (this.y - this.radius > 0 && this.y + this.radius < this.canvasHeight);
+        }
+
+        reset(y) {
+            this.y = y;
+            this.vy = 0;
+            this.invincibleFrames = 0;
+        }
+
+        setInvincible(duration) {
+            this.invincibleFrames = duration;
+        }
+
+        decrementInvincible() {
+            if (this.invincibleFrames > 0) this.invincibleFrames--;
+        }
+
+        draw(ctx, skinColor) {
+            ctx.save();
+            const calcW = this.radius * 1.8;
+            const calcH = this.radius * 2.2;
+            const calcX = this.x - calcW / 2;
+            const calcY = this.y - calcH / 2;
+
+            if (skinColor === 'dark') {
+                ctx.fillStyle = "#3a3f4a";
+                ctx.strokeStyle = "#2c2f36";
+                ctx.fillStyle = "#e6f7ff";
+                ctx.fillStyle = "#000";
+                ctx.fillStyle = "#c0c4cc";
+                ctx.fillStyle = "#1a1a1a";
+                ctx.fillStyle = "#f5a623";
+            } else {
+                ctx.fillStyle = "#f5e6c8";
+                ctx.strokeStyle = "#d4b88c";
+                ctx.fillStyle = "#fff8e7";
+                ctx.fillStyle = "#553b1f";
+                ctx.fillStyle = "#e0d6c0";
+                ctx.fillStyle = "#3e2a1a";
+                ctx.fillStyle = "#dd8844";
+            }
+
+            ctx.beginPath();
+            ctx.roundRect(calcX, calcY, calcW, calcH, 8);
+            if (skinColor === 'dark') ctx.fillStyle = "#3a3f4a";
+            else ctx.fillStyle = "#f5e6c8";
+            ctx.fill();
+            if (skinColor === 'dark') ctx.strokeStyle = "#2c2f36";
+            else ctx.strokeStyle = "#d4b88c";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            const dispW = calcW * 0.7;
+            const dispH = calcH * 0.25;
+            const dispX = calcX + (calcW - dispW) / 2;
+            const dispY = calcY + 6;
+            if (skinColor === 'dark') ctx.fillStyle = "#e6f7ff";
+            else ctx.fillStyle = "#fff8e7";
+            ctx.fillRect(dispX, dispY, dispW, dispH);
+            if (skinColor === 'dark') ctx.fillStyle = "#000";
+            else ctx.fillStyle = "#553b1f";
+            ctx.font = `bold ${Math.floor(dispH * 0.6)}px monospace`;
+            ctx.textAlign = "center";
+            ctx.fillText("88:88", dispX + dispW / 2, dispY + dispH * 0.75);
+
+            const btnW = calcW * 0.2;
+            const btnH = calcH * 0.12;
+            const startX = calcX + calcW * 0.1;
+            const startY = dispY + dispH + 6;
+            const gapX = calcW * 0.07;
+            const gapY = 4;
+            const buttonSymbols = ["7", "8", "9", "4", "5", "6", "1", "2", "3"];
+
+            ctx.font = `${Math.floor(btnH * 0.7)}px monospace`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            for (let i = 0; i < buttonSymbols.length; i++) {
+                const row = Math.floor(i / 3);
+                const col = i % 3;
+                const btnX = startX + col * (btnW + gapX);
+                const btnY = startY + row * (btnH + gapY);
+                if (skinColor === 'dark') ctx.fillStyle = "#c0c4cc";
+                else ctx.fillStyle = "#e0d6c0";
+                ctx.fillRect(btnX, btnY, btnW, btnH);
+                if (skinColor === 'dark') ctx.fillStyle = "#1a1a1a";
+                else ctx.fillStyle = "#3e2a1a";
+                ctx.fillText(buttonSymbols[i], btnX + btnW / 2, btnY + btnH / 2);
+            }
+            ctx.restore();
+        }
+    }
+
+    let playerBird = null;
+
+    function togglePause() {
+        if (!isGameStarted || !gameActive || afterResolvePause) return;
+        isPaused = !isPaused;
+    }
+
+    function generateRandomPositions() {
+        chalkFormulas = [];
+        const cols = 8;
+        const rows = 5;
+        const cellW = W / cols;
+        const cellH = H / rows;
+        let index = 0;
+        for (let i = 0; i < cols; i++) {
+            for (let j = 0; j < rows; j++) {
+                const formula = mathFormulas[index % mathFormulas.length];
+                const cellX = i * cellW + cellW / 2;
+                const cellY = j * cellH + cellH / 2;
+                const randomOffsetX = (Math.random() - 0.5) * cellW * 0.4;
+                const randomOffsetY = (Math.random() - 0.5) * cellH * 0.4;
+                chalkFormulas.push({
+                    text: formula,
+                    x: cellX + randomOffsetX,
+                    y: cellY + randomOffsetY,
+                    angle: (Math.random() - 0.5) * 0.25,
+                    fontSize: 14 + Math.random() * 12,
+                });
+                index++;
+            }
+        }
+    }
 
     function resizeCanvas() {
         const container = canvas.parentElement;
@@ -75,12 +317,16 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.height = BASE_H;
         W = BASE_W;
         H = BASE_H;
-        bird.x = BIRD_START_X;
-        bird.y = H / 2;
-        bird.radius = BIRD_RADIUS;
+        if (playerBird) {
+            playerBird.x = BIRD_START_X;
+            playerBird.y = H / 2;
+            playerBird.radius = BIRD_RADIUS;
+            playerBird.canvasHeight = H;
+        }
         for (let obs of obstacles) {
             obs.width = OBSTACLE_W;
         }
+        generateRandomPositions();
     }
 
     window.addEventListener('resize', () => {
@@ -139,6 +385,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function spawnObstacle() {
+        if (obstacles.length > 0) {
+            const lastObstacle = obstacles[obstacles.length - 1];
+            const minDistance = OBSTACLE_W + 120;
+            if (lastObstacle.x + lastObstacle.width > W - minDistance) {
+                return;
+            }
+        }
         const minGapFromTop = 80;
         const maxGapFromBottom = H - currentGap - 80;
         let topHeight = Math.min(
@@ -159,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateObstacles() {
         for (let i = 0; i < obstacles.length; i++) {
             obstacles[i].x -= currentSpeed;
-            if (!obstacles[i].passed && obstacles[i].x + OBSTACLE_W < bird.x) {
+            if (!obstacles[i].passed && obstacles[i].x + OBSTACLE_W < playerBird.x) {
                 obstacles[i].passed = true;
                 score++;
                 updateScoreUI();
@@ -169,24 +422,9 @@ document.addEventListener('DOMContentLoaded', function () {
         obstacles = obstacles.filter(obs => obs.x + OBSTACLE_W > 0);
     }
 
-    function updateBird() {
-        if (!gameActive) return;
-        bird.vy += GRAVITY;
-        bird.y += bird.vy;
-
-        if (bird.y - BIRD_RADIUS <= 0) {
-            gameOver();
-            return;
-        }
-        if (bird.y + BIRD_RADIUS >= H) {
-            gameOver();
-            return;
-        }
-    }
-
     function checkCollisions() {
-        if (!gameActive || invincibleFrames > 0) {
-            if (invincibleFrames > 0) invincibleFrames--;
+        if (!gameActive || playerBird.invincibleFrames > 0) {
+            if (playerBird) playerBird.decrementInvincible();
             return false;
         }
         for (let i = 0; i < obstacles.length; i++) {
@@ -194,11 +432,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const topRect = { x: obs.x, y: 0, w: OBSTACLE_W, h: obs.topHeight };
             const bottomRect = { x: obs.x, y: obs.bottomY, w: OBSTACLE_W, h: H - obs.bottomY };
             const collide = (rect) => {
-                const closestX = Math.max(rect.x, Math.min(bird.x, rect.x + rect.w));
-                const closestY = Math.max(rect.y, Math.min(bird.y, rect.y + rect.h));
-                const dx = bird.x - closestX;
-                const dy = bird.y - closestY;
-                return (dx * dx + dy * dy) < BIRD_RADIUS * BIRD_RADIUS;
+                const closestX = Math.max(rect.x, Math.min(playerBird.x, rect.x + rect.w));
+                const closestY = Math.max(rect.y, Math.min(playerBird.y, rect.y + rect.h));
+                const dx = playerBird.x - closestX;
+                const dy = playerBird.y - closestY;
+                return (dx * dx + dy * dy) < playerBird.radius * playerBird.radius;
             };
             if (collide(topRect) || collide(bottomRect)) {
                 killerObstacleIndex = i;
@@ -222,8 +460,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function jump() {
-        if (gameActive && !afterResolvePause) {
-            bird.vy = JUMP_FORCE;
+        if (gameActive && !afterResolvePause && !isPaused && playerBird) {
+            playerBird.jump();
         }
     }
 
@@ -263,11 +501,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 obstacles.splice(killerObstacleIndex, 1);
             }
             killerObstacleIndex = -1;
-            invincibleFrames = INVINCIBLE_DURATION;
+            if (playerBird) playerBird.setInvincible(INVINCIBLE_DURATION);
             hideModal();
             afterResolvePause = true;
             gameActive = false;
             setTimeout(() => {
+                if (playerBird) {
+                    playerBird.y = H / 2;
+                    playerBird.vy = 0;
+                }
                 afterResolvePause = false;
                 gameActive = true;
             }, 1000);
@@ -283,6 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!gameActive) return;
         gameActive = false;
         saveBestScore();
+        addGameResult(score);
         showDeathModal();
     }
 
@@ -291,12 +534,11 @@ document.addEventListener('DOMContentLoaded', function () {
         gameActive = true;
         afterResolvePause = false;
         score = 0;
-        invincibleFrames = 0;
         killerObstacleIndex = -1;
         obstacles = [];
-        bird.y = H / 2;
-        bird.vy = 0;
         frameCounter = 0;
+        isPaused = false;
+        if (playerBird) playerBird.reset(H / 2);
         updateScoreUI();
         hideModal();
     }
@@ -305,17 +547,29 @@ document.addEventListener('DOMContentLoaded', function () {
         bgColor = menuBgSelect.value;
         skinColor = menuSkinSelect.value;
         resizeCanvas();
+        if (!playerBird) {
+            playerBird = new Bird(BIRD_START_X, H / 2, BIRD_RADIUS, GRAVITY, JUMP_FORCE, H);
+        } else {
+            playerBird.reset(H / 2);
+            playerBird.radius = BIRD_RADIUS;
+            playerBird.canvasHeight = H;
+            playerBird.gravity = GRAVITY;
+            playerBird.jumpForce = JUMP_FORCE;
+        }
         fullReset();
         startMenu.style.display = 'none';
         isGameStarted = true;
+        isPaused = false;
         if (!animationId) {
             gameLoop();
         }
+        startBubbleGeneration();
     }
 
     function returnToMainMenu() {
         gameActive = false;
         isGameStarted = false;
+        isPaused = false;
         if (animationId) {
             cancelAnimationFrame(animationId);
             animationId = null;
@@ -331,15 +585,48 @@ document.addEventListener('DOMContentLoaded', function () {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, W, H);
 
-        ctx.font = "bold 14px 'Courier New', monospace";
-        for (let i = 0; i < mathFormulas.length; i++) {
-            let x = (i * 87) % (W + 100) - 50;
-            let y = (i * 73) % H;
-            ctx.fillStyle = "#ffffff30";
-            ctx.fillText(mathFormulas[i], x, y);
-            ctx.fillStyle = "#aaccff40";
-            ctx.fillText(mathFormulas[(i + 5) % mathFormulas.length], x + 45, y + 25);
+        ctx.save();
+        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+        ctx.lineWidth = 1;
+        const step = 50;
+        for (let x = 0; x < W; x += step) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, H);
+            ctx.stroke();
         }
+        for (let y = 0; y < H; y += step) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(W, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        for (let f of chalkFormulas) {
+            ctx.save();
+            ctx.translate(f.x, f.y);
+            ctx.rotate(f.angle);
+            ctx.font = `bold ${f.fontSize}px 'Courier New', monospace`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.fillText(f.text, 0, 0);
+            ctx.restore();
+        }
+    }
+
+    function drawPauseOverlay() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.font = `bold ${Math.min(60, W / 8)}px 'Courier New', monospace`;
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("⏸ ПАУЗА", W / 2, H / 2);
+        ctx.font = `20px monospace`;
+        ctx.fillStyle = "#cccccc";
+        ctx.fillText("Нажмите P или ESC для продолжения", W / 2, H / 2 + 60);
     }
 
     function adjustColor(color, percent) {
@@ -348,96 +635,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
         const b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
         return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
-    }
-
-    function drawBird() {
-        ctx.save();
-        const calcW = BIRD_RADIUS * 1.8;
-        const calcH = BIRD_RADIUS * 2.2;
-        const calcX = bird.x - calcW / 2;
-        const calcY = bird.y - calcH / 2;
-
-        if (skinColor === 'dark') {
-            ctx.fillStyle = "#3a3f4a";
-            ctx.strokeStyle = "#2c2f36";
-            ctx.fillStyle = "#e6f7ff";
-            ctx.fillStyle = "#000";
-            ctx.fillStyle = "#c0c4cc";
-            ctx.fillStyle = "#1a1a1a";
-            ctx.fillStyle = "#f5a623";
-        } else {
-            ctx.fillStyle = "#f5e6c8";
-            ctx.strokeStyle = "#d4b88c";
-            ctx.fillStyle = "#fff8e7";
-            ctx.fillStyle = "#553b1f";
-            ctx.fillStyle = "#e0d6c0";
-            ctx.fillStyle = "#3e2a1a";
-            ctx.fillStyle = "#dd8844";
-        }
-
-        ctx.beginPath();
-        ctx.roundRect(calcX, calcY, calcW, calcH, 8);
-        if (skinColor === 'dark') ctx.fillStyle = "#3a3f4a";
-        else ctx.fillStyle = "#f5e6c8";
-        ctx.fill();
-        if (skinColor === 'dark') ctx.strokeStyle = "#2c2f36";
-        else ctx.strokeStyle = "#d4b88c";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        const dispW = calcW * 0.7;
-        const dispH = calcH * 0.25;
-        const dispX = calcX + (calcW - dispW) / 2;
-        const dispY = calcY + 6;
-        if (skinColor === 'dark') ctx.fillStyle = "#e6f7ff";
-        else ctx.fillStyle = "#fff8e7";
-        ctx.fillRect(dispX, dispY, dispW, dispH);
-        if (skinColor === 'dark') ctx.fillStyle = "#000";
-        else ctx.fillStyle = "#553b1f";
-        ctx.font = `bold ${Math.floor(dispH * 0.6)}px monospace`;
-        ctx.textAlign = "center";
-        ctx.fillText("88:88", dispX + dispW / 2, dispY + dispH * 0.75);
-
-        const btnW = calcW * 0.2;
-        const btnH = calcH * 0.12;
-        const startX = calcX + calcW * 0.1;
-        const startY = dispY + dispH + 6;
-        const gapX = calcW * 0.07;
-        const gapY = 4;
-        const buttonSymbols = ["7", "8", "9", "4", "5", "6", "1", "2", "3"];
-
-        ctx.font = `${Math.floor(btnH * 0.7)}px monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        for (let i = 0; i < buttonSymbols.length; i++) {
-            const row = Math.floor(i / 3);
-            const col = i % 3;
-            const btnX = startX + col * (btnW + gapX);
-            const btnY = startY + row * (btnH + gapY);
-            if (skinColor === 'dark') ctx.fillStyle = "#c0c4cc";
-            else ctx.fillStyle = "#e0d6c0";
-            ctx.fillRect(btnX, btnY, btnW, btnH);
-            if (skinColor === 'dark') ctx.fillStyle = "#1a1a1a";
-            else ctx.fillStyle = "#3e2a1a";
-            ctx.fillText(buttonSymbols[i], btnX + btnW / 2, btnY + btnH / 2);
-        }
-    }
-
-    if (!CanvasRenderingContext2D.prototype.roundRect) {
-        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-            if (w < 2 * r) r = w / 2;
-            if (h < 2 * r) r = h / 2;
-            this.moveTo(x+r, y);
-            this.lineTo(x+w-r, y);
-            this.quadraticCurveTo(x+w, y, x+w, y+r);
-            this.lineTo(x+w, y+h-r);
-            this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-            this.lineTo(x+r, y+h);
-            this.quadraticCurveTo(x, y+h, x, y+h-r);
-            this.lineTo(x, y+r);
-            this.quadraticCurveTo(x, y, x+r, y);
-            return this;
-        };
     }
 
     function drawObstacles() {
@@ -464,39 +661,129 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!isGameStarted) return;
         drawBackground();
         drawObstacles();
-        drawBird();
-        if (gameActive && !afterResolvePause) {
-            updateBird();
+        if (playerBird) playerBird.draw(ctx, skinColor);
+
+        if (!isPaused && gameActive && !afterResolvePause && playerBird) {
+            playerBird.update();
+            if (!playerBird.isAlive()) gameOver();
             handleSpawning();
             updateObstacles();
             checkCollisions();
+        } else if (isPaused && gameActive && !afterResolvePause) {
+            drawPauseOverlay();
         }
+
         animationId = requestAnimationFrame(gameLoop);
     }
 
     function handleKeydown(e) {
         if (e.code === 'Space' || e.code === 'ArrowUp') {
             e.preventDefault();
-            jump();
+            if (!isPaused) jump();
         }
         if (e.key === 'Enter' && questionZone.style.display === 'block') {
             e.preventDefault();
             checkSolution();
         }
+        if (e.code === 'KeyP' || e.code === 'Escape') {
+            e.preventDefault();
+            togglePause();
+        }
     }
 
     function handleCanvasClick() {
-        jump();
+        if (!isPaused) jump();
+    }
+
+    function loadGameHistory() {
+        const saved = localStorage.getItem('mathMadnessHistory');
+        if (saved) {
+            try {
+                gameScores = JSON.parse(saved);
+            } catch (e) { gameScores = []; }
+        }
+        if (!Array.isArray(gameScores)) gameScores = [];
+        if (gameScores.length > 10) gameScores = gameScores.slice(-10);
+    }
+
+    function saveGameHistory() {
+        localStorage.setItem('mathMadnessHistory', JSON.stringify(gameScores.slice(-10)));
+    }
+
+    function addGameResult(finalScore) {
+        gameScores.push({
+            date: new Date().toLocaleTimeString(),
+            score: finalScore,
+            difficulty: currentDifficulty
+        });
+        saveGameHistory();
+        if (chartInstance && document.getElementById('statsModal').style.visibility === 'visible') {
+            renderChart();
+        }
+    }
+
+    function renderChart() {
+        const chartCanvas = document.getElementById('statsChart');
+        if (!chartCanvas) return;
+        const ctxChart = chartCanvas.getContext('2d');
+        if (!ctxChart) return;
+
+        const lastGames = gameScores.slice(-10);
+        const labels = lastGames.map((g, idx) => `Игра ${idx + 1}`);
+        const data = lastGames.map(g => g.score);
+        const isLight = document.body.classList.contains('light-theme');
+        const barColor = isLight ? 'rgba(54, 162, 235, 0.7)' : 'rgba(75, 192, 192, 0.7)';
+        const borderColor = isLight ? 'rgba(54, 162, 235, 1)' : 'rgba(75, 192, 192, 1)';
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctxChart, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Счёт',
+                    data: data,
+                    backgroundColor: barColor,
+                    borderColor: borderColor,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Очки' } },
+                    x: { title: { display: true, text: 'Игры' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const idx = context.dataIndex;
+                                const game = lastGames[idx];
+                                return `Счёт: ${game.score} (${game.difficulty})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     function setupMenuHandlers() {
+        const gameTitle = document.querySelector('.game-title') || document.querySelector('h1');
         settingsToggleBtn.addEventListener('click', function () {
-            const menuCard = document.querySelector('.menu-card');
-            menuCard.classList.toggle('settings-open');
-            if (settingsPanel.style.display === 'none' || settingsPanel.style.display === '') {
+            if (settingsPanel.style.display === 'none') {
                 settingsPanel.style.display = 'block';
+                if (gameTitle) gameTitle.style.display = 'none';
+                playButton.style.display = 'none';
             } else {
                 settingsPanel.style.display = 'none';
+                if (gameTitle) gameTitle.style.display = 'block';
+                playButton.style.display = 'block';
             }
         });
         document.querySelectorAll('.diff-menu-btn').forEach(btn => {
@@ -511,12 +798,40 @@ document.addEventListener('DOMContentLoaded', function () {
         menuSkinSelect.addEventListener('change', function () {
             skinColor = this.value;
         });
-    }
 
-    window.toggleTheme = function() {
-        document.body.classList.toggle('light-theme');
-        localStorage.setItem('game-theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
-    };
+        const themeBtn = document.querySelector('.theme-btn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', function () {
+                document.body.classList.toggle('light-theme');
+                const isLight = document.body.classList.contains('light-theme');
+                localStorage.setItem('game-theme', isLight ? 'light' : 'dark');
+                if (chartInstance && document.getElementById('statsModal').style.visibility === 'visible') {
+                    renderChart();
+                }
+            });
+        }
+
+        const showStatsBtn = document.getElementById('showStatsBtn');
+        const statsModal = document.getElementById('statsModal');
+        const closeStatsBtn = document.getElementById('closeStatsBtn');
+
+        if (showStatsBtn) {
+            showStatsBtn.addEventListener('click', () => {
+                renderChart();
+                statsModal.style.visibility = 'visible';
+            });
+        }
+        if (closeStatsBtn) {
+            closeStatsBtn.addEventListener('click', () => {
+                statsModal.style.visibility = 'hidden';
+            });
+        }
+        if (statsModal) {
+            statsModal.addEventListener('click', (e) => {
+                if (e.target === statsModal) statsModal.style.visibility = 'hidden';
+            });
+        }
+    }
 
     function initTheme() {
         const saved = localStorage.getItem('game-theme');
@@ -527,6 +842,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function init() {
         loadBestScore();
+        loadGameHistory();
         applyDifficultyParameters();
         setupMenuHandlers();
         playButton.addEventListener('click', startGame);
@@ -544,6 +860,50 @@ document.addEventListener('DOMContentLoaded', function () {
         initTheme();
         resizeCanvas();
     }
+    const adviceBtn = document.getElementById('adviceBtn');
+    const adviceDisplay = document.getElementById('adviceDisplay');
 
+    async function translateText(text, targetLang = 'ru') {
+        try {
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetLang}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.responseData.translatedText;
+        } catch (error) {
+            console.error('Ошибка перевода:', error);
+            return text;
+        }
+    }
+
+    async function fetchRandomAdvice() {
+        if (!adviceDisplay) return;
+        adviceDisplay.style.display = 'block';
+        adviceDisplay.innerHTML = '⏳ Загрузка совета...';
+
+        try {
+            const response = await fetch('https://api.adviceslip.com/advice');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            let adviceText = data.slip.advice;
+
+            adviceDisplay.innerHTML = '🔄 Перевод...';
+            const translatedText = await translateText(adviceText);
+
+            adviceDisplay.innerHTML = `💬 «${translatedText}»`;
+            setTimeout(() => {
+                if (adviceDisplay) adviceDisplay.style.display = 'none';
+            }, 8000);
+        } catch (error) {
+            console.error('Ошибка загрузки совета:', error);
+            adviceDisplay.innerHTML = '❌ Не удалось загрузить совет. Попробуйте позже.';
+            setTimeout(() => {
+                if (adviceDisplay) adviceDisplay.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    if (adviceBtn) {
+        adviceBtn.addEventListener('click', fetchRandomAdvice);
+    }
     init();
 });
